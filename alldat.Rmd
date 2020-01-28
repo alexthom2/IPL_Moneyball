@@ -1,0 +1,645 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+
+library(tidyverse)
+library(rvest)
+library(glue)
+
+```
+
+```{r}
+
+ipltab <- function(year) {
+  
+  Sys.sleep(3)
+  
+  cat(".")
+  
+  url <- glue("https://www.espncricinfo.com/table/series/8048/season/{year}/indian-premier-league")
+  
+  dat2 <-   read_html(url) %>%
+    html_nodes("#main-container > div > section:nth-child(1) > div.tab-content > div > div:nth-child(2) > div > table") %>%
+    html_table() %>%
+    flatten_df() %>%
+    mutate(Yea = year) %>%
+    separate(FOR, c("RF", "OF"), "/") %>%
+    separate(Against, c("AF", "OB"), "/")
+  
+  
+  dat2$RF <- as.numeric(as.character(dat2$RF))
+  dat2$AF <- as.numeric(as.character(dat2$AF))
+  
+  
+  return(dat2)
+  
+  
+}
+
+
+
+ipltaba <- ipltab(2019) %>%
+                          bind_rows(ipltab(2018)) %>%
+                            bind_rows(ipltab(2017)) %>%
+                              bind_rows(ipltab(2016)) %>%
+                              bind_rows(ipltab(2015)) %>%
+                              bind_rows(ipltab(2014)) %>%
+                             bind_rows(ipltab(2013))
+
+str(ipltaba)
+  
+```
+
+
+```{r}
+
+ipl_pro1 <- ipltaba %>% mutate(scorerat = RF/AF) %>%
+                          mutate(actwin = W/(W+L)) %>%
+                            mutate(predwin2 = (scorerat^11)/(1+scorerat^11)) %>%
+                              mutate(delta = abs(actwin-predwin2)) 
+
+
+```
+
+
+
+
+
+```{r}
+
+
+expfind <- function(exp){
+  
+  data <- ipltaba %>% mutate(scorerat = RF/AF) %>%
+                          mutate(actwin = W/(W+L)) %>%
+                            mutate(predwin2 = (scorerat^exp)/(1+scorerat^exp)) %>%
+                              mutate(delta = abs(actwin-predwin2)) %>%
+                                summarise(MAE = mean(delta)) 
+  x <- data[[1]]
+
+  return(x)
+    
+}
+
+
+
+expdat <- data.frame(exp1 = seq(0, 20, by = 1))
+
+
+expdat1 <- expdat %>% group_by(exp1) %>%
+                      mutate(MAE = expfind(exp1)) %>%
+                        ungroup()
+
+
+ggplot(expdat1, aes(x = exp1, y =MAE)) + geom_line(col = "#9a00ab") + 
+                                          geom_point(col = "#9a00ab", size = 3) +
+                                              ylim(0,0.13) +
+                                                labs(x = "Exponent", y = "MEA", title = "Best Value for Pythagorean Exponent in IPL") +
+                          theme(panel.background = element_rect(fill = "#d1d1d1"), panel.grid.minor = element_blank(), panel.grid.major = element_line(colour = "#a8a8a8"))
+                                  
+                                  
+                                  
+```                                  
+                                  
+
+```{r}
+
+
+
+ipl_pro3 <- ipltaba %>% summarise(avteamRF = mean(RF), avteamRA = mean(AF)) %>%
+                            mutate(ratio = avteamRF/avteamRA) %>%
+                                   mutate(predwin = (ratio^11.5)/(1+ratio^11.5)) %>%
+                                            mutate(totwins = 14 * predwin)
+
+
+
+
+```
+
+
+
+```{r}
+
+library(scales)
+
+ipl_pro4 <- ipltaba %>%  mutate(scorerat = RF/AF) %>%
+                          mutate(`Act Win %` = W/(W+L)) %>%
+                            mutate(`Pred Win %` = (scorerat^11)/(1+scorerat^11)) %>%
+                              mutate(delta = abs(`Act Win %`-`Pred Win %`))  %>%
+                                mutate(team1 = str_remove(Team, "[123456789]")) %>%
+                                  separate(team1, c("n1", "n2", "n3"), sep = " ") %>%
+                                    mutate(tn = if_else(n1 == "Royal", "Bangalore", 
+                                                        if_else(n1 == "Sunrisers", "Hyderabad", 
+                                                                if_else(n1 == "Kings", "Punjab", 
+                                                                        if_else(n1 == "Rising", "Pune", n1))))) %>%
+    select(tn, Yea, `Act Win %`, `Pred Win %`) %>%
+        gather("type", "value", -tn, -Yea)
+ 
+
+cols <- c(`Pred Win %` = "#9a00ab", `Act Win %` = "#0aa137")
+
+ggplot(ipl_pro4, aes(y = Yea, x = value, col = type)) + 
+                                  geom_point(size = 2) + 
+                                      coord_flip() + 
+                                        facet_wrap(~tn) +
+                                          labs(x = "Year", y = "Win Percentage", title = "Win Percentage by Team and Year compared to Predicted") + 
+                                guides(colour = guide_legend("Value")) +
+                                            scale_x_continuous(labels = percent_format()) +
+                                                  scale_color_manual(values = cols) + 
+                                                    theme(panel.background = element_rect(fill = "#d1d1d1"), panel.grid.minor = element_blank(), panel.grid.major = element_line(colour = "#a8a8a8"), legend.position = c(0.8,0.1))
+                                              
+
+````
+
+
+
+
+```{r}
+
+runs <- data.frame(rf = seq(2225, 2285, by = 5), af = 2226)
+
+runswin <- runs %>% mutate(ratio = rf/af) %>%
+                                   mutate(predwin = (ratio^11.5)/(1+ratio^11.5)) %>%
+                                            mutate(totwins = 14 * predwin)
+
+
+runswin
+
+```
+
+
+
+
+```{r}
+
+setwd("~/R/Cricket/IPL_Mondeyball/ipldata")
+
+
+```
+
+
+```{r}
+samp <- read_csv("1082591.csv", col_names = c("type", "inn", "over", "batting", "batsman", "nonstrik", "bowler", "bat", "ext", "wickty", "diss"))
+
+samp2 <- samp %>% filter(type == "ball") %>%
+                      mutate(year = filter(read_csv("1082591.csv", col_names = c("type", "inn", "over", "batting", "batsman", "nonstrik", "bowler", "bat", "ext", "wickty", "diss"))))
+
+````
+
+
+```{r}
+
+
+setwd("~/R/Cricket/IPL_Mondeyball/ipldata")
+
+
+gamey <-  function(r) {
+            dat <- r %>% filter(type == "info") %>%
+                            filter(inn == "season")  
+            
+          
+            x <- dat[[3]]
+            
+            return(x)
+  
+}
+
+
+fileread <- function(x){
+             dat <- read_csv(x, col_names = c("type", "inn", "over", "batting", "batsman", "nonstrik", "bowler", "bat", "ext", "wickty", "diss"))
+             
+             dat2 <- dat %>% mutate(file = x)
+             
+             return(dat2)
+  
+}
+
+
+files <- list.files()
+
+dataset2 <- map_dfr(files, fileread)
+
+
+year <- map_dfr(files, fileread) %>%
+                filter(type == "info") %>%
+                  filter(inn == "season") %>%
+                      select(file, over)
+
+colnames(year)[2] <- "year" 
+
+
+
+dat3 <- dataset2 %>% filter(type == "ball") %>%
+                        left_join(year, by = "file")
+
+
+
+
+
+
+
+````
+
+```{r}
+
+playdat <- dat3 %>% select(year, batsman, bat, ext, wickty) %>%
+                               mutate(totruns = bat+ext) %>%
+                            mutate(one = if_else(bat == 1, 1,0)) %>%
+                          mutate(two = if_else(bat == 2, 1,0)) %>%
+                          mutate(fours = if_else(bat == 4, 1, 0)) %>%
+                            mutate(six = if_else(bat == 6, 1,0)) %>%
+                              mutate(dot = if_else(totruns == 0,1,0)) %>%
+                                mutate(wick1 = if_else(!is.na(wickty), 1,0)) %>% 
+                                  mutate(group = if_else(year == "2011",1,
+                                                         0)) %>%
+                                  mutate(group2 = if_else(year == "2011", 1, 
+                                                          if_else(year =="2012", 1,0))) %>%
+                                  mutate(group3 = if_else(group2 ==1, 1,
+                                                          if_else(year == "2013", 1,0))) %>%
+                              mutate(group4 = if_else(group3 == 1, 1, if_else(year == "2014", 1,0))) %>%
+                              mutate(group5 = if_else(group4 == 1,1, if_else(year == "2015",1,0))) %>%
+                              mutate(group6 = if_else(group5 == 1,1, if_else(year == "2016",1,0))) %>%
+                              mutate(group7 = if_else(group6 == 1, 1, if_else(year == "2017",1,0)))
+
+
+
+```
+
+
+
+```{r}
+
+
+yearrun <- dat3 %>% select(year, batsman, bat, ext, wickty) %>%
+                               mutate(totruns = bat+ext) %>% 
+                        group_by(year, batsman) %>%
+                            summarise(nextrun = sum(totruns, na.rm = T), nextball = n())
+
+twenty12 <- yearrun %>% filter(year == "2012")
+twenty13 <- yearrun %>% filter(year == "2013")
+twenty14 <- yearrun %>% filter(year == "2014")
+twenty15 <- yearrun %>% filter(year == "2015")
+twenty16 <- yearrun %>% filter(year == "2016")
+twenty17 <- yearrun %>% filter(year == "2017")
+twenty18 <- yearrun %>% filter(year == "2018")
+
+
+````
+
+```{r}
+
+
+
+
+
+g1 <- playdat %>% filter(group ==1) %>%
+                  group_by(batsman) %>%
+                    summarise(totrun = sum(totruns, na.rm = T), totball = n(), 
+                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), 
+                                          tot4 = sum(fours), tot6 = sum(six), wick = sum(wick1)) %>%
+                      mutate(wick2 = if_else(wick == 0, 1,wick)) %>%
+                      mutate(bpi = totball/wick2, rpb = totrun/totball, dper = totdot/totball, 
+                             sixrate = tot6/totball, fourr = tot4/totball, sr = totrun/totball) %>%
+                          left_join(twenty12, by = "batsman")
+
+g2 <- playdat %>% filter(group2 ==1) %>%
+                  group_by(batsman) %>%
+                    summarise(totrun = sum(totruns, na.rm = T), totball = n(), 
+                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), 
+                                          tot4 = sum(fours), tot6 = sum(six), wick = sum(wick1)) %>%
+                      mutate(wick2 = if_else(wick == 0, 1,wick)) %>%
+                      mutate(bpi = totball/wick2, rpb = totrun/totball, dper = totdot/totball, 
+                             sixrate = tot6/totball, fourr = tot4/totball, sr = totrun/totball) %>%
+                          left_join(twenty13, by = "batsman")
+
+
+
+g3 <- playdat %>% filter(group3 ==1) %>%
+                  group_by(batsman) %>%
+                    summarise(totrun = sum(totruns, na.rm = T), totball = n(), 
+                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), 
+                                          tot4 = sum(fours), tot6 = sum(six), wick = sum(wick1)) %>%
+                      mutate(wick2 = if_else(wick == 0, 1,wick)) %>%
+                      mutate(bpi = totball/wick2, rpb = totrun/totball, dper = totdot/totball, 
+                             sixrate = tot6/totball, fourr = tot4/totball, sr = totrun/totball) %>%
+                          left_join(twenty14, by = "batsman")
+
+g4 <- playdat %>% filter(group4 ==1) %>%
+                  group_by(batsman) %>%
+                    summarise(totrun = sum(totruns, na.rm = T), totball = n(), 
+                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), 
+                                          tot4 = sum(fours), tot6 = sum(six), wick = sum(wick1)) %>%
+                      mutate(wick2 = if_else(wick == 0, 1,wick)) %>%
+                      mutate(bpi = totball/wick2, rpb = totrun/totball, dper = totdot/totball, 
+                             sixrate = tot6/totball, fourr = tot4/totball, sr = totrun/totball) %>%
+                          left_join(twenty15, by = "batsman")
+
+
+g5 <- playdat %>% filter(group5 ==1) %>%
+                  group_by(batsman) %>%
+                    summarise(totrun = sum(totruns, na.rm = T), totball = n(), 
+                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), 
+                                          tot4 = sum(fours), tot6 = sum(six), wick = sum(wick1)) %>%
+                      mutate(wick2 = if_else(wick == 0, 1,wick)) %>%
+                      mutate(bpi = totball/wick2, rpb = totrun/totball, dper = totdot/totball, 
+                             sixrate = tot6/totball, fourr = tot4/totball, sr = totrun/totball) %>%
+                          left_join(twenty16, by = "batsman")
+
+
+
+g6 <- playdat %>% filter(group6 ==1) %>%
+                  group_by(batsman) %>%
+                    summarise(totrun = sum(totruns, na.rm = T), totball = n(), 
+                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), 
+                                          tot4 = sum(fours), tot6 = sum(six), wick = sum(wick1)) %>%
+                      mutate(wick2 = if_else(wick == 0, 1,wick)) %>%
+                      mutate(bpi = totball/wick2, rpb = totrun/totball, dper = totdot/totball, 
+                             sixrate = tot6/totball, fourr = tot4/totball, sr = totrun/totball) %>%
+                          left_join(twenty17, by = "batsman")
+
+
+
+g7 <- playdat %>% filter(group7 ==1) %>%
+                  group_by(batsman) %>%
+                    summarise(totrun = sum(totruns, na.rm = T), totball = n(), 
+                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), 
+                                          tot4 = sum(fours), tot6 = sum(six), wick = sum(wick1)) %>%
+                      mutate(wick2 = if_else(wick == 0, 1,wick)) %>%
+                      mutate(bpi = totball/wick2, rpb = totrun/totball, dper = totdot/totball, 
+                             sixrate = tot6/totball, fourr = tot4/totball, sr = totrun/totball) %>%
+                          left_join(twenty18, by = "batsman")
+
+
+yeadat <- g1 %>% bind_rows(g2) %>%
+                  bind_rows(g3) %>%
+                    bind_rows(g4) %>%
+                      bind_rows(g5) %>%
+                      bind_rows(g6) %>%
+                      bind_rows(g7) %>%
+                  filter(!is.na(nextrun))
+
+
+
+
+
+```
+
+
+```{r}
+
+smp_size <- floor(0.75 * nrow(yeadat))
+train_s <- sample(seq_len(nrow(yeadat)), size = smp_size)
+train <- yeadat[train_s, ]
+test <- yeadat[-train_s, ]
+
+
+```
+
+```{r}
+
+
+mod2 <- lm(nextrun ~  bpi + rpb + dper + sixrate + fourr, train)
+
+summary(mod2)
+
+
+
+
+
+
+````
+
+```{r}
+
+
+test2 <- test %>% mutate(pred = predict(mod2, test))
+
+
+```
+
+
+```{r}
+
+
+teamdat <- dat3 %>% select(year, batting, bat, ext, wickty) %>%
+                      mutate(totruns = bat+ext) %>%
+                        mutate(one = if_else(bat == 1, 1,0)) %>%
+                          mutate(two = if_else(bat == 2, 1,0)) %>%
+                          mutate(fours = if_else(bat == 4, 1, 0)) %>%
+                            mutate(six = if_else(bat == 6, 1,0)) %>%
+                              mutate(dot = if_else(totruns == 0,1,0)) %>%
+                                mutate(wicks = if_else(!is.na(wickty), 1,0)) %>%
+                              group_by(batting, year) %>%
+                                summarise(totrun = sum(totruns, na.rm = T), totball = n(), 
+                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), 
+                                          tot4 = sum(fours), tot6 = sum(six), wick = sum(wicks)) %>%
+                                        ungroup()
+
+                              
+mod <- lm(totrun ~ totball +totdot + tot1 + tot2 + tot4 + tot6+ wick, teamdat)
+
+summary(mod)
+
+pred <- teamdat %>% mutate(val = predict(mod, teamdat)) %>%
+                      mutate(delta = totrun - val)
+
+```
+
+
+```{r}
+library(caret)
+
+
+
+rf_grid <- expand.grid(mtry = c(2, 3, 4, 5),
+                      splitrule = c("extratrees"),
+                      min.node.size = c(7,9,11,13,15,17,19,21,30,40,50,60))
+
+control <- trainControl(method="repeatedcv", number=5, repeats=3)
+
+
+mtry <- sqrt(ncol(yeadat))
+
+
+rf_random <- train(nextrun~bpi + nextball+ rpb + dper + sixrate + fourr + sr, data=train, method="ranger", tuneLength=15, trControl=control, tuneGrid = rf_grid)
+
+plot(rf_random)
+
+rf_random
+
+test2 <- test %>% mutate(pred = predict(rf_random, test))
+
+````
+
+
+
+
+```{r}
+
+
+
+
+````
+
+```{r}
+
+
+playdat <- dat3 %>% select(year, batsman, bat, ext, wickty) %>%
+                      mutate(totruns = bat+ext) %>%
+                        mutate(one = if_else(bat == 1, 1,0)) %>%
+                          mutate(two = if_else(bat == 2, 1,0)) %>%
+                          mutate(fours = if_else(bat == 4, 1, 0)) %>%
+                            mutate(six = if_else(bat == 6, 1,0)) %>%
+                              mutate(dot = if_else(totruns == 0,1,0)) %>%
+                                mutate(wicks = if_else(!is.na(wickty), 1,0)) %>%
+                              group_by(batsman, year) %>%
+                                summarise(totrun = sum(totruns, na.rm = T), totball = n(), 
+                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), 
+                                          tot4 = sum(fours), tot6 = sum(six), wick = sum(wicks)) %>%
+                                        ungroup()
+
+                              
+mod <- lm(totrun ~ totball +totdot + tot1 + tot2 + tot4 + tot6+ wick, playdat)
+
+summary(mod)
+
+pred <- playdat %>% mutate(val = predict(mod, playdat)) %>%
+                      mutate(delta = totrun - val)
+
+
+
+
+
+````
+
+
+```{r}
+
+ggplot(playdat, aes(x = totrun, y = tot4)) +geom_point()
+
+
+```
+
+
+
+
+```{r}
+
+playgroup <- dat3 %>% group_by(file, batsman, year) %>%
+                        summarise(tballs = n()) %>%
+                          group_by(batsman, year) %>%
+                     summarise(meanball = median(tballs, na.rm = T), sdball = sd(tballs,na.rm = T)) 
+
+
+ggplot(playgroup, aes(x = meanball, y = sdball)) + geom_point()
+
+
+
+````
+
+
+
+```{r}
+
+
+
+balldis <- dat3 %>% group_by(file, batsman, year) %>%
+                        summarise(tballs = n())
+
+
+
+ggplot(balldis, aes(x = tballs)) + geom_histogram() + facet_wrap(~year)
+
+
+
+
+
+
+
+
+
+```
+
+
+
+
+```{r}
+
+
+
+play19 <- playgroup %>% filter(year == "2019") %>%
+                          filter(!is.na(sdball)) %>% 
+                          mutate(one1 = round(rnorm(1, mean = meanball, sd = sdball),0)) %>%
+                            mutate(one = if_else(one1 <1,1,one1)) %>%
+                              select(-one1) %>%
+                                 mutate(t1 = round(rnorm(1, mean = meanball, sd = sdball),0)) %>%
+                            mutate(two = if_else(t1 <1,1,t1)) %>%
+                                  select(-t1) %>%
+                                  mutate(three1 = round(rnorm(1, mean = meanball, sd = sdball),0)) %>%
+                            mutate(three = if_else(three1 <1,1,three1)) %>%
+                                  select(-three1) %>%
+                                      mutate(f1 = round(rnorm(1, mean = meanball, sd = sdball),0)) %>%
+                            mutate(four = if_else(f1 <1,1,f1)) %>%
+                                  select(-f1) %>%
+                                        mutate(fi1 = round(rnorm(1, mean = meanball, sd = sdball),0)) %>%
+                            mutate(five = if_else(fi1 <1,1,fi1)) %>%
+                              select(-fi1) %>%
+                                 mutate(s1 = round(rnorm(1, mean = meanball, sd = sdball),0)) %>%
+                            mutate(six = if_else(s1 <1,1,s1)) %>%
+                                  select(-s1) %>%
+                                  mutate(sev1 = round(rnorm(1, mean = meanball, sd = sdball),0)) %>%
+                            mutate(seven = if_else(sev1 <1,1,sev1)) %>%
+                                  select(-sev1) %>%
+                                      mutate(ei1 = round(rnorm(1, mean = meanball, sd = sdball),0)) %>%
+                            mutate(eight = if_else(ei1 <1,1,ei1)) %>%
+                                  select(-ei1) 
+                                    mutate(ni1 = round(rnorm(1, mean = meanball, sd = sdball),0)) %>%
+                            mutate(nine = if_else(ni1 <1,1,ni1)) %>%
+                              select(-ni1) %>%
+                                 mutate(te1 = round(rnorm(1, mean = meanball, sd = sdball),0)) %>%
+                            mutate(ten = if_else(te1 <1,1,te1)) %>%
+                                  select(-te1) %>%
+                                  mutate(ele1 = round(rnorm(1, mean = meanball, sd = sdball),0)) %>%
+                            mutate(elev = if_else(ele1 <1,1,ele1)) %>%
+                                  select(-ele1) %>%
+                                      mutate(twel1 = round(rnorm(1, mean = meanball, sd = sdball),0)) %>%
+                            mutate(twel = if_else(twel1 <1,1,f1)) %>%
+                                  select(-twel1) %>%
+                                        mutate(fi1 = round(rnorm(1, mean = meanball, sd = sdball),0)) %>%
+                            mutate(five = if_else(fi1 <1,1,fi1)) %>%
+                              select(-fi1) %>%
+                                 mutate(s1 = round(rnorm(1, mean = meanball, sd = sdball),0)) %>%
+                            mutate(six = if_else(s1 <1,1,s1)) %>%
+                                  select(-s1) %>%
+                                  mutate(sev1 = round(rnorm(1, mean = meanball, sd = sdball),0)) %>%
+                            mutate(seven = if_else(sev1 <1,1,sev1)) %>%
+                                  select(-sev1)
+
+
+
+
+```
+
+
+
+
+```{r}
+
+
+balldis <- play19 %>% gather("in", "balls", -batsman, -year, -meanball, -sdball)
+
+
+ggplot(balldis, aes(x = balls)) + geom_histogram()
+
+
+
+
+
+```

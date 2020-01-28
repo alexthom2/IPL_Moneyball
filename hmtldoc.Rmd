@@ -1,0 +1,59 @@
+---
+title: "Untitled"
+author: "Alex Thom"
+date: "21/12/2019"
+output: html_document
+---
+
+
+```{r}
+
+library(tidyverse)
+library(rvest)
+library(glue)
+
+```
+
+```{r}
+
+ipltab <- function(year) {
+  
+  Sys.sleep(3)
+  
+  cat(".")
+  
+  url <- glue("https://www.espncricinfo.com/table/series/8048/season/{year}/indian-premier-league")
+  
+  dat2 <-   read_html(url) %>%
+    html_nodes("#main-container > div > section:nth-child(1) > div.tab-content > div > div:nth-child(2) > div > table") %>%
+    html_table() %>%
+    flatten_df() %>%
+    mutate(Yea = year) %>%
+    separate(FOR, c("RF", "OF"), "/") %>%
+    separate(Against, c("AF", "OB"), "/")
+  
+  
+  dat2$RF <- as.numeric(as.character(dat2$RF))
+  dat2$AF <- as.numeric(as.character(dat2$AF))
+  
+  
+  return(dat2)
+  
+  
+}
+
+
+
+ipltaba <- ipltab(2019) %>%
+                          bind_rows(ipltab(2018)) %>%
+                            bind_rows(ipltab(2017)) %>%
+                              bind_rows(ipltab(2016)) %>%
+                              bind_rows(ipltab(2015)) %>%
+                              bind_rows(ipltab(2014)) %>%
+                             bind_rows(ipltab(2013))
+
+str(ipltaba)
+  
+```
+
+
