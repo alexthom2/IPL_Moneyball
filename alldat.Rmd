@@ -253,6 +253,7 @@ playdat <- dat3 %>% select(year, batsman, bat, ext, wickty) %>%
                                mutate(totruns = bat+ext) %>%
                             mutate(one = if_else(bat == 1, 1,0)) %>%
                           mutate(two = if_else(bat == 2, 1,0)) %>%
+                          mutate(three = if_else(bat == 3, 1,0)) %>%
                           mutate(fours = if_else(bat == 4, 1, 0)) %>%
                             mutate(six = if_else(bat == 6, 1,0)) %>%
                               mutate(dot = if_else(totruns == 0,1,0)) %>%
@@ -302,21 +303,21 @@ twenty18 <- yearrun %>% filter(year == "2018")
 g1 <- playdat %>% filter(group ==1) %>%
                   group_by(batsman) %>%
                     summarise(totrun = sum(totruns, na.rm = T), totball = n(), 
-                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), 
+                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), tot3 =  sum(three),
                                           tot4 = sum(fours), tot6 = sum(six), wick = sum(wick1)) %>%
                       mutate(wick2 = if_else(wick == 0, 1,wick)) %>%
-                      mutate(bpi = totball/wick2, rpb = totrun/totball, dper = totdot/totball, 
-                             sixrate = tot6/totball, fourr = tot4/totball, sr = totrun/totball) %>%
+                      mutate(bpi = totball/wick2, dper = totdot/totball, 
+                             sixrate = tot6/totball, fourr = tot4/totball, nbsr = (tot1+tot2+tot3)/totball,  sr = totrun/totball) %>%
                           left_join(twenty12, by = "batsman")
 
 g2 <- playdat %>% filter(group2 ==1) %>%
                   group_by(batsman) %>%
                     summarise(totrun = sum(totruns, na.rm = T), totball = n(), 
-                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), 
+                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two),tot3 =  sum(three), 
                                           tot4 = sum(fours), tot6 = sum(six), wick = sum(wick1)) %>%
                       mutate(wick2 = if_else(wick == 0, 1,wick)) %>%
-                      mutate(bpi = totball/wick2, rpb = totrun/totball, dper = totdot/totball, 
-                             sixrate = tot6/totball, fourr = tot4/totball, sr = totrun/totball) %>%
+                      mutate(bpi = totball/wick2, dper = totdot/totball, 
+                             sixrate = tot6/totball, fourr = tot4/totball, nbsr = (tot1+tot2+tot3)/totball,  sr = totrun/totball) %>%
                           left_join(twenty13, by = "batsman")
 
 
@@ -324,32 +325,32 @@ g2 <- playdat %>% filter(group2 ==1) %>%
 g3 <- playdat %>% filter(group3 ==1) %>%
                   group_by(batsman) %>%
                     summarise(totrun = sum(totruns, na.rm = T), totball = n(), 
-                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), 
+                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), tot3 =  sum(three),
                                           tot4 = sum(fours), tot6 = sum(six), wick = sum(wick1)) %>%
                       mutate(wick2 = if_else(wick == 0, 1,wick)) %>%
-                      mutate(bpi = totball/wick2, rpb = totrun/totball, dper = totdot/totball, 
-                             sixrate = tot6/totball, fourr = tot4/totball, sr = totrun/totball) %>%
+                      mutate(bpi = totball/wick2, dper = totdot/totball, 
+                             sixrate = tot6/totball, fourr = tot4/totball, nbsr = (tot1+tot2+tot3)/totball,  sr = totrun/totball) %>%
                           left_join(twenty14, by = "batsman")
 
 g4 <- playdat %>% filter(group4 ==1) %>%
                   group_by(batsman) %>%
                     summarise(totrun = sum(totruns, na.rm = T), totball = n(), 
-                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), 
+                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), tot3 =  sum(three),
                                           tot4 = sum(fours), tot6 = sum(six), wick = sum(wick1)) %>%
                       mutate(wick2 = if_else(wick == 0, 1,wick)) %>%
-                      mutate(bpi = totball/wick2, rpb = totrun/totball, dper = totdot/totball, 
-                             sixrate = tot6/totball, fourr = tot4/totball, sr = totrun/totball) %>%
+                      mutate(bpi = totball/wick2, dper = totdot/totball, 
+                             sixrate = tot6/totball, fourr = tot4/totball, nbsr = (tot1+tot2+tot3)/totball,  sr = totrun/totball) %>%
                           left_join(twenty15, by = "batsman")
 
 
 g5 <- playdat %>% filter(group5 ==1) %>%
                   group_by(batsman) %>%
                     summarise(totrun = sum(totruns, na.rm = T), totball = n(), 
-                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), 
+                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), tot3 =  sum(three),
                                           tot4 = sum(fours), tot6 = sum(six), wick = sum(wick1)) %>%
                       mutate(wick2 = if_else(wick == 0, 1,wick)) %>%
-                      mutate(bpi = totball/wick2, rpb = totrun/totball, dper = totdot/totball, 
-                             sixrate = tot6/totball, fourr = tot4/totball, sr = totrun/totball) %>%
+                      mutate(bpi = totball/wick2, dper = totdot/totball, 
+                             sixrate = tot6/totball, fourr = tot4/totball, nbsr = (tot1+tot2+tot3)/totball,  sr = totrun/totball) %>%
                           left_join(twenty16, by = "batsman")
 
 
@@ -357,11 +358,11 @@ g5 <- playdat %>% filter(group5 ==1) %>%
 g6 <- playdat %>% filter(group6 ==1) %>%
                   group_by(batsman) %>%
                     summarise(totrun = sum(totruns, na.rm = T), totball = n(), 
-                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), 
+                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), tot3 =  sum(three),
                                           tot4 = sum(fours), tot6 = sum(six), wick = sum(wick1)) %>%
                       mutate(wick2 = if_else(wick == 0, 1,wick)) %>%
-                      mutate(bpi = totball/wick2, rpb = totrun/totball, dper = totdot/totball, 
-                             sixrate = tot6/totball, fourr = tot4/totball, sr = totrun/totball) %>%
+                      mutate(bpi = totball/wick2, dper = totdot/totball, 
+                             sixrate = tot6/totball, fourr = tot4/totball, nbsr = (tot1+tot2+tot3)/totball,  sr = totrun/totball) %>%
                           left_join(twenty17, by = "batsman")
 
 
@@ -369,11 +370,11 @@ g6 <- playdat %>% filter(group6 ==1) %>%
 g7 <- playdat %>% filter(group7 ==1) %>%
                   group_by(batsman) %>%
                     summarise(totrun = sum(totruns, na.rm = T), totball = n(), 
-                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), 
+                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), tot3 =  sum(three),
                                           tot4 = sum(fours), tot6 = sum(six), wick = sum(wick1)) %>%
                       mutate(wick2 = if_else(wick == 0, 1,wick)) %>%
-                      mutate(bpi = totball/wick2, rpb = totrun/totball, dper = totdot/totball, 
-                             sixrate = tot6/totball, fourr = tot4/totball, sr = totrun/totball) %>%
+                      mutate(bpi = totball/wick2, dper = totdot/totball, 
+                             sixrate = tot6/totball, fourr = tot4/totball, nbsr = (tot1+tot2+tot3)/totball,  sr = totrun/totball) %>%
                           left_join(twenty18, by = "batsman")
 
 
@@ -383,8 +384,8 @@ yeadat <- g1 %>% bind_rows(g2) %>%
                       bind_rows(g5) %>%
                       bind_rows(g6) %>%
                       bind_rows(g7) %>%
-                  filter(!is.na(nextrun))
-
+                  filter(!is.na(nextrun)) %>%
+                        select(batsman, bpi, dper,sixrate, fourr, nbsr, sr, nextrun, nextball)
 
 
 
@@ -405,7 +406,7 @@ test <- yeadat[-train_s, ]
 ```{r}
 
 
-mod2 <- lm(nextrun ~  bpi + rpb + dper + sixrate + fourr, train)
+mod2 <- lm(nextrun ~  bpi + dper + sixrate + fourr + nbsr +nextball+ sr, train)
 
 summary(mod2)
 
@@ -425,33 +426,6 @@ test2 <- test %>% mutate(pred = predict(mod2, test))
 ```
 
 
-```{r}
-
-
-teamdat <- dat3 %>% select(year, batting, bat, ext, wickty) %>%
-                      mutate(totruns = bat+ext) %>%
-                        mutate(one = if_else(bat == 1, 1,0)) %>%
-                          mutate(two = if_else(bat == 2, 1,0)) %>%
-                          mutate(fours = if_else(bat == 4, 1, 0)) %>%
-                            mutate(six = if_else(bat == 6, 1,0)) %>%
-                              mutate(dot = if_else(totruns == 0,1,0)) %>%
-                                mutate(wicks = if_else(!is.na(wickty), 1,0)) %>%
-                              group_by(batting, year) %>%
-                                summarise(totrun = sum(totruns, na.rm = T), totball = n(), 
-                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), 
-                                          tot4 = sum(fours), tot6 = sum(six), wick = sum(wicks)) %>%
-                                        ungroup()
-
-                              
-mod <- lm(totrun ~ totball +totdot + tot1 + tot2 + tot4 + tot6+ wick, teamdat)
-
-summary(mod)
-
-pred <- teamdat %>% mutate(val = predict(mod, teamdat)) %>%
-                      mutate(delta = totrun - val)
-
-```
-
 
 ```{r}
 library(caret)
@@ -462,16 +436,20 @@ rf_grid <- expand.grid(mtry = c(2, 3, 4, 5),
                       splitrule = c("extratrees"),
                       min.node.size = c(7,9,11,13,15,17,19,21,30,40,50,60))
 
-control <- trainControl(method="repeatedcv", number=5, repeats=3)
+control <- trainControl(method="repeatedcv", number=10, repeats=2)
 
 
 mtry <- sqrt(ncol(yeadat))
 
 
-rf_random <- train(nextrun~bpi + nextball+ rpb + dper + sixrate + fourr + sr, data=train, method="ranger", tuneLength=15, trControl=control, tuneGrid = rf_grid)
+rf_random <- train(nextrun~bpi + dper + sixrate + fourr + nbsr +nextball, data=train, method="ranger", tuneLength=15, trControl=control, tuneGrid = rf_grid)
 
 plot(rf_random)
 
+```
+
+
+```{r}
 rf_random
 
 test2 <- test %>% mutate(pred = predict(rf_random, test))
@@ -479,63 +457,62 @@ test2 <- test %>% mutate(pred = predict(rf_random, test))
 ````
 
 
-
-
 ```{r}
 
 
 
+rf_random2 <- train(nextrun~bpi + dper + sixrate + fourr + nbsr +nextball, data=train, method="ranger", tuneLength=15, trControl=control)
 
-````
-
-```{r}
-
-
-playdat <- dat3 %>% select(year, batsman, bat, ext, wickty) %>%
-                      mutate(totruns = bat+ext) %>%
-                        mutate(one = if_else(bat == 1, 1,0)) %>%
-                          mutate(two = if_else(bat == 2, 1,0)) %>%
-                          mutate(fours = if_else(bat == 4, 1, 0)) %>%
-                            mutate(six = if_else(bat == 6, 1,0)) %>%
-                              mutate(dot = if_else(totruns == 0,1,0)) %>%
-                                mutate(wicks = if_else(!is.na(wickty), 1,0)) %>%
-                              group_by(batsman, year) %>%
-                                summarise(totrun = sum(totruns, na.rm = T), totball = n(), 
-                                          totdot = sum(dot), tot1 = sum(one), tot2 = sum(two), 
-                                          tot4 = sum(fours), tot6 = sum(six), wick = sum(wicks)) %>%
-                                        ungroup()
-
-                              
-mod <- lm(totrun ~ totball +totdot + tot1 + tot2 + tot4 + tot6+ wick, playdat)
-
-summary(mod)
-
-pred <- playdat %>% mutate(val = predict(mod, playdat)) %>%
-                      mutate(delta = totrun - val)
-
-
-
-
-
-````
-
-
-```{r}
-
-ggplot(playdat, aes(x = totrun, y = tot4)) +geom_point()
-
+rf_random2
 
 ```
 
 
 
 
+
+```{r}
+
+ggplot(playdat, aes(x = totrun, y = totball)) +geom_point()
+
+
+```
+
+```{r}
+
+
+
+smp_size <- floor(0.80 * nrow(playdat))
+train_s <- sample(seq_len(nrow(playdat)), size = smp_size)
+train <- playdat[train_s, ]
+test <- playdat[-train_s, ]
+
+
+```
+
+
+```{r}
+
+                             
+mod <- lm(totrun ~ totball +totdot + tot1 + tot2 + tot4 + tot6+ wick, train)
+
+summary(mod)
+
+pred <- test %>% mutate(val = predict(mod, test)) %>%
+                      mutate(delta = totrun - val)
+
+
+
+
+```
+
+
 ```{r}
 
 playgroup <- dat3 %>% group_by(file, batsman, year) %>%
                         summarise(tballs = n()) %>%
-                          group_by(batsman, year) %>%
-                     summarise(meanball = median(tballs, na.rm = T), sdball = sd(tballs,na.rm = T)) 
+                          group_by(batsman) %>%
+                     summarise(meanball = mean(tballs, na.rm = T), sdball = sd(tballs,na.rm = T)) 
 
 
 ggplot(playgroup, aes(x = meanball, y = sdball)) + geom_point()
@@ -567,6 +544,36 @@ ggplot(balldis, aes(x = tballs)) + geom_histogram() + facet_wrap(~year)
 
 ```
 
+```{r}
+
+two <- data.frame("beta" = 2, meanball = mean(rbeta(1000, 2, 2) * 100))
+five <- data.frame("beta" = 5, meanball = mean(rbeta(1000, 2, 5) * 100))
+ten <- data.frame("beta" = 10, meanball = mean(rbeta(1000, 2, 10) * 100))
+twent <- data.frame("beta" = 20, meanball = mean(rbeta(1000, 2, 20) * 100))
+thirt <- data.frame("beta" = 30, meanball = mean(rbeta(1000, 2, 30) * 100))
+fort <- data.frame("beta" = 40, meanball = mean(rbeta(1000, 2, 40) * 100))
+one <- data.frame("beta" = 1, meanball = mean(rbeta(1000, 2, 1) * 100))
+
+simdat <- two %>% bind_rows(ten) %>%
+                        bind_rows(twent) %>%
+                          bind_rows(thirt) %>%
+                            bind_rows(fort) %>%
+                              bind_rows(five) %>%
+                                bind_rows(one)
+
+
+ggplot(simdat, aes(x = meanball, y = beta)) + geom_point() + geom_smooth()
+
+```
+
+```{r}
+
+betamod <- lm(beta ~poly(meanball,2, raw = T), simdat)
+
+summary(betamod)
+
+
+```
 
 
 
@@ -599,7 +606,7 @@ play19 <- playgroup %>% filter(year == "2019") %>%
                                   select(-sev1) %>%
                                       mutate(ei1 = round(rnorm(1, mean = meanball, sd = sdball),0)) %>%
                             mutate(eight = if_else(ei1 <1,1,ei1)) %>%
-                                  select(-ei1) 
+                                  select(-ei1) %>%
                                     mutate(ni1 = round(rnorm(1, mean = meanball, sd = sdball),0)) %>%
                             mutate(nine = if_else(ni1 <1,1,ni1)) %>%
                               select(-ni1) %>%
@@ -610,25 +617,33 @@ play19 <- playgroup %>% filter(year == "2019") %>%
                             mutate(elev = if_else(ele1 <1,1,ele1)) %>%
                                   select(-ele1) %>%
                                       mutate(twel1 = round(rnorm(1, mean = meanball, sd = sdball),0)) %>%
-                            mutate(twel = if_else(twel1 <1,1,f1)) %>%
+                            mutate(twel = if_else(twel1 <1,1,twel1)) %>%
                                   select(-twel1) %>%
-                                        mutate(fi1 = round(rnorm(1, mean = meanball, sd = sdball),0)) %>%
-                            mutate(five = if_else(fi1 <1,1,fi1)) %>%
-                              select(-fi1) %>%
-                                 mutate(s1 = round(rnorm(1, mean = meanball, sd = sdball),0)) %>%
-                            mutate(six = if_else(s1 <1,1,s1)) %>%
-                                  select(-s1) %>%
-                                  mutate(sev1 = round(rnorm(1, mean = meanball, sd = sdball),0)) %>%
-                            mutate(seven = if_else(sev1 <1,1,sev1)) %>%
-                                  select(-sev1)
-
+                                        mutate(thir1 = round(rnorm(1, mean = meanball, sd = sdball),0)) %>%
+                            mutate(thirt = if_else(thir1 <1,1,thir1)) %>%
+                              select(-thir1) %>%
+                                 mutate(ftee1 = round(rnorm(1, mean = meanball, sd = sdball),0)) %>%
+                            mutate(fourte = if_else(ftee1 <1,1,ftee1)) %>%
+                                  select(-ftee1) %>%
+                                 gather("match", "balls", -batsman, -year, -sdball, -meanball) %>%
+                                    group_by(batsman) %>%
+                                      summarise(totballs = sum(balls))
 
 
 
 ```
 
 
+```{r}
 
+
+actballs <- dat3 %>% filter(year == 2019) %>%
+                            group_by(batsman) %>%
+                              summarise(totact = n())
+
+
+
+```
 
 ```{r}
 
@@ -637,6 +652,88 @@ balldis <- play19 %>% gather("in", "balls", -batsman, -year, -meanball, -sdball)
 
 
 ggplot(balldis, aes(x = balls)) + geom_histogram()
+
+
+
+
+
+```
+
+
+
+```{r}
+
+
+
+bats19  <- dat3 %>% group_by(file, batsman, year) %>%
+                        summarise(tballs = n()) %>%
+                          group_by(batsman, year) %>%
+                     summarise(n = n())  %>%
+                            filter(year == 2019) %>%
+                              left_join(playgroup, ny = "batsman") %>%
+                                  ungroup()
+
+
+
+play192 <- bats19 %>% mutate(nnn = predict(betamod, bats19)) %>%
+                            group_by(batsman) %>%
+                         mutate(balls = sum(rbeta(n,2,nnn)*100)) 
+
+
+````
+
+
+
+```{r}
+
+
+game <- dat3 %>% filter(year == 2019) %>% 
+                      group_by(batsman, file) %>%
+                          summarise(n = n()) %>%
+                              ungroup() %>%
+                                  group_by(batsman) %>%
+                                    summarise(match = n(), totball = sum(n))
+
+
+alldata <- play192 %>% left_join(game, by = "batsman") %>%
+                              mutate(delta = totball - balls)
+
+
+distri <- alldata %>% select(batsman, totball, balls) %>%
+                            gather("method", "vsl", -batsman) 
+
+
+ggplot(distri, aes(x = vsl, fill = method)) + geom_density(alpha = 0.4)
+                        
+
+
+
+`````
+
+
+
+
+```{r}
+
+warn <- dat3 %>% filter(batsman == "DA Warner") %>%
+                              group_by(year, file) %>%
+                                summarise(n = n()) %>%
+                                    ungroup() %>%
+                                      group_by(year) %>%
+                                        summarise(game = n(), balls = sum(n)) %>%
+                                          mutate(bpg = balls/game)
+
+
+ggplot(warn, aes(x = reorder(year, bpg), y = bpg)) + geom_col + coord_flip()
+
+
+
+```
+
+
+
+```{r}
+
 
 
 
