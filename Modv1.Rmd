@@ -1,0 +1,175 @@
+---
+title: "The Model"
+author: "Alex Thom"
+date: "12/04/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## packages
+
+```{r}
+
+library(tidyverse)
+
+library(tidymodels)
+
+library(readxl)
+
+```
+
+## Data
+
+
+```{r}
+
+
+
+
+setwd("~/R/Cricket/IPL_Mondeyball/ipldata")
+
+
+gamey <-  function(r) {
+            dat <- r %>% filter(type == "info") %>%
+                            filter(inn == "season")  
+            
+          
+            x <- dat[[3]]
+            
+            return(x)
+  
+}
+
+
+fileread <- function(x){
+             dat <- read_csv(x, col_names = c("type", "inn", "over", "batting", "batsman", "nonstrik", "bowler", "bat", "ext", "wickty", "diss"))
+             
+             dat2 <- dat %>% mutate(file = x)
+             
+             return(dat2)
+  
+}
+
+
+files <- list.files()
+
+dataset2 <- map_dfr(files, fileread)
+
+
+year <- map_dfr(files, fileread) %>%
+                filter(type == "info") %>%
+                  filter(inn == "season") %>%
+                      select(file, over)
+
+colnames(year)[2] <- "year" 
+
+
+
+ipldat <- dataset2 %>% filter(type == "ball") %>%
+                        left_join(year, by = "file")
+
+
+
+
+```
+
+## Functions 
+
+```{r}
+
+
+playrun <- function(x,y){
+  
+  balls2 <- x %>% filter(!is.na(mball)) %>%
+                    mutate(meanball = if_else(n < 1000, if_else(mball > 30, 30, mball), mball))  %>%
+                    mutate(ga = y) %>%
+                        slice(rep(seq_len(n()), ga)) 
+
+balls3 <- balls2 %>% mutate(fact = predict(betamod, balls2)) %>%
+                            rowwise() %>%
+                         mutate(balls =  rbeta(1,2, fact)*100)
+
+balls4 <- balls3 %>% left_join(g118, by = "batsman") %>%
+                         filter(totball > 0)
+
+
+
+simruns2 <- balls4 %>% mutate(predruns = predict(second, match2b)) %>%
+                          group_by(batsman) %>%
+                              summarise(predrun = sum(predruns))
+  
+  
+  
+}
+
+
+
+
+
+````
+
+### Models 
+
+```{r}
+
+two <- data.frame("beta" = 2, meanball = mean(rbeta(1000, 2, 2) * 100))
+five <- data.frame("beta" = 5, meanball = mean(rbeta(1000, 2, 5) * 100))
+ten <- data.frame("beta" = 10, meanball = mean(rbeta(1000, 2, 10) * 100))
+twent <- data.frame("beta" = 20, meanball = mean(rbeta(1000, 2, 20) * 100))
+thirt <- data.frame("beta" = 30, meanball = mean(rbeta(1000, 2, 30) * 100))
+fort <- data.frame("beta" = 40, meanball = mean(rbeta(1000, 2, 40) * 100))
+one <- data.frame("beta" = 1, meanball = mean(rbeta(1000, 2, 1) * 100))
+
+simdat <- two %>% bind_rows(ten) %>%
+                        bind_rows(twent) %>%
+                          bind_rows(thirt) %>%
+                            bind_rows(fort) %>%
+                              bind_rows(five) %>%
+                                bind_rows(one)
+
+
+
+betamod <- lm(beta ~poly(meanball,2, raw = T), simdat)
+
+summary(betamod)
+
+
+```
+
+
+
+
+
+
+```{r}
+
+
+runb2 <- runb %>% left_join(g1, by = "batsman") %>%
+                    ungroup() %>%
+                      select(-batsman, -file)
+
+
+second <- lm(torun ~ totball + dper + sixrate + nbsr + sr, runb2)
+
+
+summary(second)
+
+
+
+```
+
+
+
+## Output 
+
+```{r}
+
+
+
+
+
+`````
