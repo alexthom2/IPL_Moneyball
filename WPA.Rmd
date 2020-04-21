@@ -1,0 +1,292 @@
+---
+title: "Win Probability Added"
+author: "Alex Thom"
+date: "16/04/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+#package
+library(tidyverse)
+
+library(tidymodels)
+
+library(readxl)
+```
+
+
+```{r}
+
+
+
+
+setwd("~/R/Cricket/IPL_Mondeyball/ipldata")
+
+
+gamey <-  function(r) {
+            dat <- r %>% filter(type == "info") %>%
+                            filter(inn == "season")  
+            
+          
+            x <- dat[[3]]
+            
+            return(x)
+  
+}
+
+
+fileread <- function(x){
+             dat <- read_csv(x, col_names = c("type", "inn", "over", "batting", "batsman", "nonstrik", "bowler", "bat", "ext", "wickty", "diss"))
+             
+             dat2 <- dat %>% mutate(file = x)
+             
+             return(dat2)
+  
+}
+
+
+files <- list.files()
+
+dataset2 <- map_dfr(files, fileread)
+
+
+year <- map_dfr(files, fileread) %>%
+                filter(type == "info") %>%
+                  filter(inn == "season") %>%
+                      select(file, over)
+
+colnames(year)[2] <- "year" 
+
+
+
+
+
+iplres <- dataset2 %>% filter(type == "info") %>%
+                                filter(inn == "winner") %>%
+                                  select(over, file)
+
+colnames(iplres)[1] <- "winner"
+
+ipldat <- dataset2 %>% filter(type == "ball") %>%
+                        left_join(year, by = "file") %>%
+                          left_join(iplres, by = "file") 
+
+
+
+
+```
+
+
+```{r}
+
+ipldat2 <- ipldat %>% group_by(inn, file) %>%
+                             mutate(ball2 = row_number()) %>%
+                                    ungroup()
+
+
+
+```
+
+
+
+```{r}
+
+
+iplwin <- ipldat2 %>% mutate(wincat = if_else(winner == batting, 1, 0)) %>%
+                          mutate(totrun = bat+ext) %>%
+                          mutate(wickloss = if_else(!is.na(wickty), 1,0))
+                          filter(!is.na(wincat)) %>%
+                              mutate(group = if_else(ball2 < 2,1,0)) %>%
+                                filter(group == 1) %>%
+                                group_by(file, inn) %>%
+                                summarise(runs = sum(totrun), win = sum(wincat)) %>%
+                                group_by(runs) %>%
+                                    summarise(n = n(), win = sum(win)/120) %>%
+                                      mutate(perwin = win/n)
+
+
+
+
+
+
+```
+
+
+```{r}
+
+balls <- function(x){
+  
+  iplwin <- ipldat2 %>% filter(inn == 1) %>%
+                      mutate(wincat = if_else(winner == batting, 1, 0)) %>%
+                          mutate(totrun = bat+ext) %>%
+                          mutate(wickloss = if_else(!is.na(wickty), 1,0)) %>%
+                          filter(!is.na(wincat)) %>%
+                              mutate(group = if_else(ball2 < x,1,0)) %>%
+                                filter(group == 1) %>%
+                                group_by(file, inn) %>%
+                                summarise(runs = sum(totrun), wicks = sum(wickloss), wins = sum(wincat)) %>%
+                                mutate(win1 = wins/(x-1), balls = x-1) %>%
+                                mutate(win = if_else(win1 == 1, "Yes", "No")) %>%
+                                ungroup() %>%
+                                select(-inn, -file, -wins, -win1)
+  
+  iplwin$win <- as.factor(iplwin$win)
+
+  return(iplwin)
+  
+}
+
+
+
+
+```
+
+
+
+
+```{r}
+
+
+ggplot(iplwin, aes(x = runs, y = perwin, fill = n)) + geom_col()
+
+
+
+```
+
+
+
+
+```{r}
+
+
+balldata <- balls(2) %>% bind_rows(balls(3)) %>%
+                              bind_rows(balls(4)) %>%
+                                    bind_rows(balls(5)) %>%
+                                        bind_rows(balls(6)) %>%
+                                            bind_rows(balls(7)) %>%
+                                              bind_rows(balls(8)) %>%
+                                                   bind_rows(balls(9)) %>%
+                                    bind_rows(balls(10)) %>%
+                                        bind_rows(balls(11)) %>%
+                                            bind_rows(balls(12)) %>%
+                                              bind_rows(balls(13)) %>%
+                                                   bind_rows(balls(14)) %>%
+                                    bind_rows(balls(15)) %>%
+                                        bind_rows(balls(16)) %>%
+                                            bind_rows(balls(17)) %>%
+                                              bind_rows(balls(18)) %>%
+                                                         bind_rows(balls(19)) %>%
+                                    bind_rows(balls(20)) %>%
+                                        bind_rows(balls(21)) %>%
+                                            bind_rows(balls(22)) %>%
+                                              bind_rows(balls(23)) %>%
+                                                bind_rows(balls(24)) %>%
+                                    bind_rows(balls(25)) %>%
+                                        bind_rows(balls(26)) %>%
+                                            bind_rows(balls(27)) %>%
+                                              bind_rows(balls(28)) %>%
+                                                   bind_rows(balls(29)) %>%
+                                    bind_rows(balls(30)) %>%
+                                        bind_rows(balls(31)) %>%
+                                            bind_rows(balls(32)) %>%
+                                              bind_rows(balls(33)) %>%
+                                                   bind_rows(balls(34)) %>%
+                                    bind_rows(balls(35)) %>%
+                                        bind_rows(balls(36)) %>%
+                                            bind_rows(balls(37)) %>%
+                                              bind_rows(balls(38)) %>%
+                                                         bind_rows(balls(39)) %>%
+                                    bind_rows(balls(40)) %>%
+                                        bind_rows(balls(41)) %>%
+                                            bind_rows(balls(42)) %>%
+                                              bind_rows(balls(43)) %>%
+                                         bind_rows(balls(44)) %>%
+                                    bind_rows(balls(45)) %>%
+                                        bind_rows(balls(46)) %>%
+                                            bind_rows(balls(47)) %>%
+                                              bind_rows(balls(48)) %>%
+                                                         bind_rows(balls(49)) %>%
+                                    bind_rows(balls(50)) %>%
+                                        bind_rows(balls(51)) %>%
+                                            bind_rows(balls(52)) %>%
+                                              bind_rows(balls(53)) %>%
+                                              bind_rows(balls(54)) %>%
+                                    bind_rows(balls(55)) %>%
+                                        bind_rows(balls(56)) %>%
+                                            bind_rows(balls(57)) %>%
+                                              bind_rows(balls(58)) %>%
+                                                         bind_rows(balls(59)) %>%
+                                    bind_rows(balls(60)) %>%
+                                        bind_rows(balls(61)) %>%
+                                            bind_rows(balls(62)) %>%
+                                              bind_rows(balls(63)) %>%
+                                         bind_rows(balls(64)) %>%
+                                    bind_rows(balls(65)) %>%
+                                        bind_rows(balls(66)) %>%
+                                            bind_rows(balls(67)) %>%
+                                              bind_rows(balls(68)) %>%
+                                                         bind_rows(balls(69)) %>%
+                                    bind_rows(balls(70)) %>%
+                                        bind_rows(balls(71)) %>%
+                                            bind_rows(balls(72))
+
+
+
+````
+
+
+
+```{r}
+
+
+win_split <- initial_split(balldata, prop = .7, strata = "win")
+win_train <- training(win_split)
+win_test  <- testing(win_split)
+
+
+
+```
+
+
+
+```{r}
+
+set.seed(1234)
+
+
+logregmod1 <- logistic_reg(mode = "classification")
+
+
+log_reg1 <- 
+  logregmod1 %>% set_engine("glm") %>%
+  fit(win ~ .,
+    data = win_train)
+
+
+
+```
+
+
+
+```{r}
+ 
+x <- predict(log_reg1, new_data = win_test, type = "prob") %>%
+  mutate(wins = win_test$win, balls = win_test$balls, runs = win_test$runs, wicks = win_test$wicks) 
+
+```
+
+
+```{r}
+library(viridis)
+
+ggplot(x, aes(x = balls, y = runs, col = .pred_Yes)) + geom_point() + scale_color_viridis()
+
+
+
+```
