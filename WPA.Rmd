@@ -18,11 +18,13 @@ library(tidyverse)
 library(tidymodels)
 
 library(readxl)
+
+
 ```
 
 
-```{r}
 
+```{r}
 
 
 
@@ -73,23 +75,79 @@ iplres <- dataset2 %>% filter(type == "info") %>%
 
 colnames(iplres)[1] <- "winner"
 
+
+iplgrou <- dataset2 %>% filter(type == "info") %>%
+                          filter(inn == "venue") %>%
+                            select(over, file)
+colnames(iplgrou)[1] <- "venue"
+
+
+toss <- dataset2 %>% filter(type == "info") %>%
+                      filter(inn == "toss_winner") %>%
+                        select(over, file)
+
+
+colnames(toss)[1] <- "toss"
+
+date <- dataset2 %>% filter(type == "info") %>%
+                        filter(inn == "date") %>%
+                          select(over, file)
+
+colnames(date)[1] <- "date"
+
+
+gend <- dataset2 %>% filter(type == "info") %>%
+                        filter(inn == "gender") %>%
+                          select(over, file)
+
+colnames(gend)[1] <- "gender" 
+
+
 ipldat <- dataset2 %>% filter(type == "ball") %>%
                         left_join(year, by = "file") %>%
-                          left_join(iplres, by = "file") 
+                          left_join(iplres, by = "file")  %>%
+                              left_join(iplgrou, by = "file") %>%
+                                left_join(toss, by = "file") %>%
+                                  left_join(date, by = "file") %>%
+                                    left_join(gend, by = "file")
+
+
 
 
 
 
 ```
+
+
+
+
+
+
+
+```{r}
+
+grounds <- ipldat %>%
+                  group_by(venue, file) %>%
+                        count() %>%
+                      ungroup() %>%
+                      group_by(venue) %>%
+                      count()
+
+grounds
+
+````
+
 
 
 ```{r}
 
 ipldat2 <- ipldat %>% group_by(inn, file) %>%
                              mutate(ball2 = row_number()) %>%
-                                    ungroup()
+                                    ungroup() %>%
+                                  separate(date, c("yy", "mm", "dd"), sep = "/") %>%
+                                  select(-mm, -dd)
 
-
+ipldat2$yy <- as.numeric(as.character(ipldat2$yy))
 
 ```
 
@@ -97,17 +155,78 @@ ipldat2 <- ipldat %>% group_by(inn, file) %>%
 
 ```{r}
 
-
-iplwin <- ipldat2 %>% mutate(wincat = if_else(winner == batting, 1, 0)) %>%
+ipl_win_summ <- ipldat2 %>% mutate(wincat = if_else(winner == batting, 1, 0)) %>%
                           mutate(totrun = bat+ext) %>%
-                          mutate(wickloss = if_else(!is.na(wickty), 1,0))
+                          mutate(wickloss = if_else(!is.na(wickty), 1,0)) %>%
                           filter(!is.na(wincat)) %>%
-                              mutate(group = if_else(ball2 < 2,1,0)) %>%
-                                filter(group == 1) %>%
-                                group_by(file, inn) %>%
-                                summarise(runs = sum(totrun), win = sum(wincat)) %>%
+                            group_by(file, inn) %>%
+                              mutate(runs = cumsum(totrun), wicks = cumsum(wickloss), balls = ball2*1) %>%
+                               group_by(balls, runs) %>%
+                                  summarise(n = n())
+
+```
+
+
+```{r}
+
+library(viridis)
+
+
+ggplot(ipl_win_summ, aes(x = balls, y = runs)) + geom_density2d() + scale_colour_viridis()
+
+
+
+```
+
+
+```{r}
+
+ipl_win_summ2 <- ipldat2 %>% mutate(wincat = if_else(winner == batting, 1, 0)) %>%
+                          mutate(totrun = bat+ext) %>%
+                          mutate(wickloss = if_else(!is.na(wickty), 1,0)) %>%
+                          filter(!is.na(wincat)) %>%
+                            group_by(file, inn) %>%
+                              mutate(runs = cumsum(totrun), wicks = cumsum(wickloss), balls = ball2*1) %>%
+                               group_by(balls, runs) %>%
+                                      summarise(n = n(), totwin = sum(wincat)) %>%
+                                        mutate(per = totwin/n) %>%
+                                            filter(balls < 121)
+
+
+
+
+ggplot(ipl_win_summ2, aes(x = balls, y = runs, col = per)) + geom_tile() + scale_color_viridis_c()
+
+
+````
+
+
+```{r}
+
+col <- c("0" = "#008c7e", "1" = "#4b005e")
+
+ggplot(ipl_win_summ, aes(x = runs, y = balls, col = as.factor(wincat))) + 
+                                            geom_point(alpha = 0.7, size = 4) +
+                                                scale_color_manual(values = col) +
+                                                  labs(x = "Runs", y = "Ball", title = "Win Status by Ball") +
+                                                      guides(col = guide_legend(title = "Win Status")) + 
+                                                        theme(panel.background = element_rect("#e6e6e6"), panel.grid = element_blank(), plot.background = element_rect("#e6e6e6"), legend.background = element_rect("#e6e6e6"), legend.key = element_rect("#e6e6e6"), plot.title = element_text(colour = "#757575", size = 18, face = "bold"))
+
+ggsave("winstat.jpeg",plot = last_plot())
+
+```
+
+```{r}
+
+
+iplwin3 <- ipldat2 %>% mutate(wincat = if_else(winner == batting, 1, 0)) %>%
+                          mutate(totrun = bat+ext) %>%
+                          mutate(wickloss = if_else(!is.na(wickty), 1,0)) %>%
+                          filter(!is.na(wincat)) %>%
+                            group_by(file, inn) %>%
+                              mutate(runs = cumsum(totrun), wicks = cumsum(wickloss), balls = ball2*1) %>%
                                 group_by(runs) %>%
-                                    summarise(n = n(), win = sum(win)/120) %>%
+                                    summarise(n = n(), win = sum(wincat)/120) %>%
                                       mutate(perwin = win/n)
 
 
@@ -120,27 +239,56 @@ iplwin <- ipldat2 %>% mutate(wincat = if_else(winner == batting, 1, 0)) %>%
 
 ```{r}
 
-balls <- function(x){
-  
-  iplwin <- ipldat2 %>% filter(inn == 1) %>%
+iplwin <- ipldat2 %>% filter(inn == 1) %>%
+                      filter(yy < 2018) %>%
                       mutate(wincat = if_else(winner == batting, 1, 0)) %>%
                           mutate(totrun = bat+ext) %>%
                           mutate(wickloss = if_else(!is.na(wickty), 1,0)) %>%
                           filter(!is.na(wincat)) %>%
-                              mutate(group = if_else(ball2 < x,1,0)) %>%
-                                filter(group == 1) %>%
-                                group_by(file, inn) %>%
-                                summarise(runs = sum(totrun), wicks = sum(wickloss), wins = sum(wincat)) %>%
-                                mutate(win1 = wins/(x-1), balls = x-1) %>%
-                                mutate(win = if_else(win1 == 1, "Yes", "No")) %>%
+                              group_by(file, inn) %>%
+  
+                                 mutate(runs = cumsum(totrun), wicks = cumsum(wickloss), balls = ball2*1) %>%
+                                mutate(win = if_else(wincat == 1, "Yes", "No")) %>%
+                                mutate(tosswin = if_else(toss == batting, 1,0)) %>%
                                 ungroup() %>%
-                                select(-inn, -file, -wins, -win1)
+                                select(balls, runs, wicks, tosswin, win, gender)
   
   iplwin$win <- as.factor(iplwin$win)
 
-  return(iplwin)
+
+
+
+```
+
+
+```{r}
+
+
+tot1st <- ipldat2 %>% filter(inn == 1) %>%
+                        mutate(tot = bat + ext) %>%
+                        group_by(file) %>%
+                          summarise(totreq = sum(tot, na.rm = T))
+
+
+
+iplwin2 <- ipldat2 %>% filter(inn == 2) %>%
+                          
+                         mutate(wincat = if_else(winner == batting, 1, 0)) %>%
+                          mutate(totrun = bat+ext) %>%
+                          mutate(wickloss = if_else(!is.na(wickty), 1,0)) %>%
+                          filter(!is.na(wincat)) %>%
+                            group_by(file, inn) %>%
   
-}
+                                 mutate(runs = cumsum(totrun), wicks = cumsum(wickloss), balls = ball2*1) %>%
+                                mutate(win = if_else(wincat == 1, "Yes", "No")) %>%
+                                left_join(tot1st, by = "file") %>%
+                                mutate(rrun = if_else(totreq - runs <0, 0, totreq - runs)) %>%
+                                   mutate(tosswin = if_else(toss == batting, 1,0)) %>%
+                                ungroup() %>%
+                                select(balls, runs, wicks, win, rrun, tosswin, gender)
+  
+  iplwin2$win <- as.factor(iplwin2$win)
+                            
 
 
 
@@ -149,11 +297,435 @@ balls <- function(x){
 
 
 
+```{r}
+
+
+
+win_split <- initial_split(iplwin, prop = .85, strata = "win")
+win_train <- training(win_split)
+win_test  <- testing(win_split)
+
+
+
+```
+
 
 ```{r}
 
 
-ggplot(iplwin, aes(x = runs, y = perwin, fill = n)) + geom_col()
+win_split2 <- initial_split(iplwin2, prop = .85, strata = "win")
+win_train2 <- training(win_split2)
+win_test2 <- testing(win_split2)
+
+
+```
+
+
+```{r}
+
+lgmod <- logistic_reg() %>%
+                set_engine("glm") 
+                  
+
+
+````
+
+
+
+
+```{r}
+
+lgmod3 <- fit(lgmod, win ~., data = win_train)
+
+
+```
+
+
+```{r}
+
+lgmod2 <- fit(lgmod, win ~ . , data = win_train2)
+
+```
+
+
+```{r}
+ 
+x <- predict(lgmod3, new_data = win_test, type = "prob") %>%
+  mutate(wins = win_test$win, balls = win_test$balls, runs = win_test$runs, wicks = win_test$wicks) 
+
+```
+
+
+```{r}
+
+
+test_preds1 <- predict(lgmod3, new_data = win_test)
+test_preds <- predict(lgmod3, new_data = win_test, type = "prob")
+
+test_preds2 <- predict(lgmod2, new_data = win_test2)
+test_pred3 <- predict(lgmod2, new_data = win_test2, type = "prob")
+
+ex <- win_test %>%
+            bind_cols(test_preds1) %>%
+              bind_cols(test_preds) %>%
+                select(win,.pred_No, .pred_Yes, .pred_class) %>%
+                  mutate(inn = "1st")
+
+
+ex2 <- win_test2 %>%
+            bind_cols(test_preds2) %>%
+              bind_cols(test_pred3) %>%
+                select(win,.pred_No, .pred_Yes, .pred_class) %>%
+                  mutate(inn = "2nd")
+
+
+
+
+
+mod1 <- roc_curve(ex, win, .pred_Yes)
+
+mod2 <- roc_curve(ex2, win, .pred_Yes)
+
+
+
+
+mod1a <- mod1 %>% mutate(inn =  "1st")
+
+mod2a <- mod2 %>% mutate(inn = "2nd")
+
+
+exes <- mod1a %>% bind_rows(mod2a)
+
+
+cols2 <- c("1st" = "#008c7e", "2nd" = "#4b005e")
+
+
+     ggplot(exes, aes(x = 1-specificity, y = sensitivity, col = inn)) +
+            geom_line() +
+               geom_abline(
+    lty = 2, alpha = 0.5,
+    color = "grey",
+    size = 1.2
+  ) +
+       scale_color_manual(values = cols2) +
+    labs(title = "Innings ROC Curve") +
+       guides(colour = guide_legend(title = "Innings")) +
+    theme_minimal()
+
+```
+```{r}
+
+onegame <- ipldat2 %>% filter(yy == 2019) %>%
+                          filter(file == "1167130.csv")
+
+
+onegam1 <- onegame %>%
+                        filter(inn == 1) %>%
+                        mutate(wincat = if_else(winner == batting, 1, 0)) %>%
+                          mutate(totrun = bat+ext) %>%
+                          mutate(wickloss = if_else(!is.na(wickty), 1,0)) %>%
+                          filter(!is.na(wincat)) %>%
+                              group_by(file, inn) %>%
+  
+                                 mutate(runs = cumsum(totrun), wicks = cumsum(wickloss), balls = ball2*1) %>%
+                                mutate(win = if_else(wincat == 1, "Yes", "No")) %>%
+                                mutate(tosswin = if_else(toss == batting, 1,0)) %>%
+                                ungroup() 
+
+
+
+
+tot1stg <- onegame %>% filter(inn == 1) %>%
+                        mutate(tot = bat + ext) %>%
+                        group_by(file) %>%
+                          summarise(totreq = sum(tot, na.rm = T))
+
+
+
+
+omegam2 <- onegame %>% 
+                      filter(inn == 2) %>%
+                         mutate(wincat = if_else(winner == batting, 1, 0)) %>%
+                          mutate(totrun = bat+ext) %>%
+                          mutate(wickloss = if_else(!is.na(wickty), 1,0)) %>%
+                          filter(!is.na(wincat)) %>%
+                            group_by(file, inn) %>%
+                                 mutate(runs = cumsum(totrun), wicks = cumsum(wickloss), balls = ball2*1) %>%
+                                mutate(win = if_else(wincat == 1, "Yes", "No")) %>%
+                                left_join(tot1stg, by = "file") %>%
+                                mutate(rrun = if_else(totreq - runs <0, 0, totreq - runs)) %>%
+                                   mutate(tosswin = if_else(toss == batting, 1,0)) %>%
+                                      ungroup()
+
+
+
+
+ x = predict(lgmod3, new_data = onegam1, type = "prob")
+y <- predict(lgmod2, new_data = omegam2, type = "prob")
+
+
+
+omegame_pred <- onegam1 %>% bind_cols(x) %>%
+                                  select(over, batting, batsman, bowler, balls, runs, .pred_Yes, .pred_No)
+                    
+
+
+colnames(omegame_pred)[7] <- "Durham"
+colnames(omegame_pred)[8] <- "Northamptonshire"
+
+
+omegame_pred2 <- omegam2 %>% bind_cols(y) %>%
+                                          select(over, batting, batsman, bowler, balls, runs,.pred_No, .pred_Yes)
+
+
+colnames(omegame_pred2)[7] <- "Durham"
+colnames(omegame_pred2)[8] <- "Northamptonshire"
+
+
+onegam <- omegame_pred %>% bind_rows(omegame_pred2) %>%
+                            mutate(row = row_number()) %>%
+                              gather("team", "WinPer", -over, -batting, -batsman, -bowler, -balls, -runs, -row)
+
+
+library(scales)
+
+cols3 <- c("Durham" = "#008c7e", "Northamptonshire" = "#4b005e")
+
+
+ggplot(onegam, aes(x = row, y = WinPer, col = team)) +
+                                                    geom_line(size = 2) +
+                                                      scale_colour_manual(values = cols3) +
+                                                        scale_y_continuous(labels = percent_format()) +
+                                                          guides(colour = guide_legend(title = "Team")) +
+                                                            labs(x = "Ball", y = "Win Chance %", title = "Durham v Northampton Blast 2019") +
+                                                                theme(panel.background = element_rect("#e6e6e6"), panel.grid = element_blank(), plot.background = element_rect("#e6e6e6"), legend.background = element_rect("#e6e6e6"), legend.key = element_rect("#e6e6e6"), plot.title = element_text(colour = "#757575", size = 18, face = "bold"))
+
+
+
+
+```
+
+```{r}
+
+
+playrat1 <- omegame_pred %>%  mutate(lagd = lag(Durham)) %>%
+                                mutate(lagwind = if_else(is.na(lagd), 0.5, lagd)) %>%
+                                  mutate(deltad = Durham-lagwind) %>%
+                                    mutate(lagn = lag(Northamptonshire)) %>%
+                                mutate(lagwinn = if_else(is.na(lagn), 0.5, lagn)) %>%
+                                  mutate(deltan = Northamptonshire-lagwinn) %>%
+                                  filter(balls > 1)
+
+bats <- playrat1 %>% group_by(batsman) %>%
+                            summarise(totWPA = round(sum(deltad)*100,2)) %>%
+                              mutate(category = "Batsman", team = "Durham")
+
+
+
+colnames(bats)[1] <- "Name"
+
+
+bowl <- playrat1 %>% group_by(bowler) %>%
+                          summarise(totWPA = round(sum(deltan)*100,2)) %>%
+                            mutate(category = "Bowler", team = "Northamptonshire")
+
+
+
+colnames(bowl)[1] <- "Name"
+
+
+firstin <- bats %>% bind_rows(bowl)
+
+
+
+
+
+
+
+```
+
+```{r}
+
+
+
+playrat2 <- omegame_pred2 %>%
+                               mutate(lagd = lag(Durham)) %>%
+                                mutate(lagwind = if_else(is.na(lagd), 0.5, lagd)) %>%
+                                  mutate(deltad = Durham-lagwind) %>%
+                                    mutate(lagn = lag(Northamptonshire)) %>%
+                                mutate(lagwinn = if_else(is.na(lagn), 0.5, lagn)) %>%
+                                  mutate(deltan = Northamptonshire-lagwinn) %>%
+                                  filter(balls > 1)
+
+
+bats <- playrat2 %>% group_by(batsman) %>%
+                            summarise(totWPA = round(sum(deltan)*100,2)) %>%
+                              mutate(category = "Batsman", team = "Northamptonshire")
+
+colnames(bats)[1] <- "Name"
+
+bowl <- playrat2 %>% group_by(bowler) %>%
+                          summarise(totWPA = round(sum(deltad)*100,2)) %>%
+                            mutate(category = "Bowler", team = "Durham")
+
+colnames(bowl)[1] <- "Name"
+
+secondin <- bats %>% bind_rows(bowl)
+
+
+secondin
+```
+
+
+```{r}
+library(gt)
+
+batters <- onegame %>% group_by(batsman) %>%
+                              summarise(Runs  = sum(bat), Balls = n()) %>%
+                        mutate(SR = round(Runs/Balls*100,2))
+
+colnames(batters)[1] <- "Name"
+
+matchdat_bat <- firstin %>% bind_rows(secondin) %>%
+                                filter(category == "Batsman") %>%
+                                  select(-category) %>%
+                                  left_join(batters, by = "Name") %>%
+                                      select(Name, team, Runs, Balls, SR, totWPA) %>%
+                                        arrange(desc(totWPA))
+
+
+colnames(matchdat_bat)[1] <- "Player"
+colnames(matchdat_bat)[2] <- "Team"
+colnames(matchdat_bat)[6] <- "WPA"
+
+```
+
+
+
+```{r}
+
+completetable <- matchdat_bat %>% 
+                gt() %>%
+                  data_color(columns = vars(WPA),
+    colors = scales::col_numeric(
+      # custom defined values - notice that order matters!
+      palette = c("#eba834", "#e0d7c5", "#ffffff", "#9f96ff", "#1d08ff"),
+      domain = NULL
+    )) %>%
+   tab_style(
+    style = list(
+      cell_borders(
+        sides = "left",
+        color = "black",
+        weight = px(3)
+      )
+    ),
+    locations = list(
+      cells_body(
+        columns = vars(WPA)
+      )
+    )
+  ) %>%
+  tab_style(
+    style = list(
+      cell_borders(
+        sides = "bottom",
+        color = "black",
+        weight = px(3)
+      )
+    ),
+    locations = list(
+      cells_column_labels(
+        columns = gt::everything()
+      )
+    )
+  ) %>%
+  tab_source_note("TABLE: @Parttimeanalyst | DATA: Cricsheet") %>%
+  tab_header(
+    title = md("**Durham v Northamptonshire Batsman Win Probability Added**"),
+   
+  )
+
+
+
+```
+
+```{r}
+
+
+
+bowlers <- onegame %>%  mutate(wickloss = if_else(!is.na(wickty), 1,0)) %>%
+                          group_by(bowler) %>%
+                              summarise(Runs  = sum(bat), Balls = n(), wicks = sum(wickloss, na.rm = T))
+
+colnames(bowlers)[1] <- "Name"
+
+matchdat_bowl <- firstin %>% bind_rows(secondin) %>%
+                                filter(category == "Bowler") %>%
+                                  select(-category) %>%
+                                  left_join(bowlers, by = "Name") %>%
+                                      select(Name, team, Runs, Balls, wicks, totWPA) %>%
+                                        arrange(desc(totWPA))
+
+
+colnames(matchdat_bowl)[1] <- "Player"
+colnames(matchdat_bowl)[2] <- "Team"
+colnames(matchdat_bowl)[5] <- "Wickets"
+colnames(matchdat_bowl)[6] <- "WPA"
+
+
+
+
+````
+
+
+```{r}
+
+completetable2 <- matchdat_bowl %>% 
+                gt() %>%
+                  data_color(columns = vars(WPA),
+    colors = scales::col_numeric(
+      # custom defined values - notice that order matters!
+      palette = c("#eba834", "#e0d7c5", "#ffffff", "#9f96ff", "#1d08ff"),
+      domain = NULL
+    )) %>%
+   tab_style(
+    style = list(
+      cell_borders(
+        sides = "left",
+        color = "black",
+        weight = px(3)
+      )
+    ),
+    locations = list(
+      cells_body(
+        columns = vars(WPA)
+      )
+    )
+  ) %>%
+  tab_style(
+    style = list(
+      cell_borders(
+        sides = "bottom",
+        color = "black",
+        weight = px(3)
+      )
+    ),
+    locations = list(
+      cells_column_labels(
+        columns = gt::everything()
+      )
+    )
+  ) %>%
+  tab_source_note("TABLE: @Parttimeanalyst | DATA: Cricsheet") %>%
+  tab_header(
+    title = md("**Durham v Northamptonshire Bowler Win Probability Added**"),
+   
+  )
+
+
+
+gtsave(completetable2, "tab2.png")
 
 
 
@@ -162,79 +734,179 @@ ggplot(iplwin, aes(x = runs, y = perwin, fill = n)) + geom_col()
 
 
 
+
+```{r}
+
+test_preds1 <- predict(log_reg2, new_data = win_test)
+test_preds <- predict(log_reg2, new_data = win_test, type = "prob")
+
+
+ex <- win_test %>%
+            bind_cols(test_preds1) %>%
+              bind_cols(test_preds) %>%
+                select(win,.pred_No, .pred_Yes, .pred_class)
+
+
+roc_curve(ex, win, .pred_Yes) %>%
+  autoplot()
+
+
+
+
+
+
+
+
+```
+
+
+
 ```{r}
 
 
-balldata <- balls(2) %>% bind_rows(balls(3)) %>%
-                              bind_rows(balls(4)) %>%
-                                    bind_rows(balls(5)) %>%
-                                        bind_rows(balls(6)) %>%
-                                            bind_rows(balls(7)) %>%
-                                              bind_rows(balls(8)) %>%
-                                                   bind_rows(balls(9)) %>%
-                                    bind_rows(balls(10)) %>%
-                                        bind_rows(balls(11)) %>%
-                                            bind_rows(balls(12)) %>%
-                                              bind_rows(balls(13)) %>%
-                                                   bind_rows(balls(14)) %>%
-                                    bind_rows(balls(15)) %>%
-                                        bind_rows(balls(16)) %>%
-                                            bind_rows(balls(17)) %>%
-                                              bind_rows(balls(18)) %>%
-                                                         bind_rows(balls(19)) %>%
-                                    bind_rows(balls(20)) %>%
-                                        bind_rows(balls(21)) %>%
-                                            bind_rows(balls(22)) %>%
-                                              bind_rows(balls(23)) %>%
-                                                bind_rows(balls(24)) %>%
-                                    bind_rows(balls(25)) %>%
-                                        bind_rows(balls(26)) %>%
-                                            bind_rows(balls(27)) %>%
-                                              bind_rows(balls(28)) %>%
-                                                   bind_rows(balls(29)) %>%
-                                    bind_rows(balls(30)) %>%
-                                        bind_rows(balls(31)) %>%
-                                            bind_rows(balls(32)) %>%
-                                              bind_rows(balls(33)) %>%
-                                                   bind_rows(balls(34)) %>%
-                                    bind_rows(balls(35)) %>%
-                                        bind_rows(balls(36)) %>%
-                                            bind_rows(balls(37)) %>%
-                                              bind_rows(balls(38)) %>%
-                                                         bind_rows(balls(39)) %>%
-                                    bind_rows(balls(40)) %>%
-                                        bind_rows(balls(41)) %>%
-                                            bind_rows(balls(42)) %>%
-                                              bind_rows(balls(43)) %>%
-                                         bind_rows(balls(44)) %>%
-                                    bind_rows(balls(45)) %>%
-                                        bind_rows(balls(46)) %>%
-                                            bind_rows(balls(47)) %>%
-                                              bind_rows(balls(48)) %>%
-                                                         bind_rows(balls(49)) %>%
-                                    bind_rows(balls(50)) %>%
-                                        bind_rows(balls(51)) %>%
-                                            bind_rows(balls(52)) %>%
-                                              bind_rows(balls(53)) %>%
-                                              bind_rows(balls(54)) %>%
-                                    bind_rows(balls(55)) %>%
-                                        bind_rows(balls(56)) %>%
-                                            bind_rows(balls(57)) %>%
-                                              bind_rows(balls(58)) %>%
-                                                         bind_rows(balls(59)) %>%
-                                    bind_rows(balls(60)) %>%
-                                        bind_rows(balls(61)) %>%
-                                            bind_rows(balls(62)) %>%
-                                              bind_rows(balls(63)) %>%
-                                         bind_rows(balls(64)) %>%
-                                    bind_rows(balls(65)) %>%
-                                        bind_rows(balls(66)) %>%
-                                            bind_rows(balls(67)) %>%
-                                              bind_rows(balls(68)) %>%
-                                                         bind_rows(balls(69)) %>%
-                                    bind_rows(balls(70)) %>%
-                                        bind_rows(balls(71)) %>%
-                                            bind_rows(balls(72))
+iplwin_test <- ipldat2 %>% filter(inn == 1) %>%
+                      mutate(wincat = if_else(winner == batting, 1, 0)) %>%
+                          mutate(totrun = bat+ext) %>%
+                          mutate(wickloss = if_else(!is.na(wickty), 1,0)) %>%
+                          filter(!is.na(wincat)) %>%
+                              group_by(file, inn) %>%
+  
+                                 mutate(runs = cumsum(totrun), wicks = cumsum(wickloss), balls = ball2*1) %>%
+                                mutate(win = if_else(wincat == 1, "Yes", "No")) %>%
+                                mutate(tosswin = if_else(toss == batting, 1,0)) %>%
+                                ungroup() %>%
+                                select(balls, runs, wicks, tosswin, wincat) %>%
+                                    group_by(balls, runs, wicks, tosswin) %>%
+                                      summarise(n = n(), totwin = sum(wincat)) %>%
+                                       
+                                             mutate(per = totwin/n)
+  
+
+
+pred_dat <- predict(lgmod3, new_data =  iplwin_test, type = "prob")
+
+iplwin_test3 <- iplwin_test %>% bind_cols(pred_dat) %>%
+                                  ungroup() 
+
+
+ggplot(iplwin_test3, aes(x = .pred_Yes, y = per)) + geom_point() + geom_abline(intercept = 0) +
+                                                xlim(0,1) +
+                                                ylim(0,1)
+
+
+```
+
+
+
+```{r}
+balls <- c(120, 120,120,120,120,120,120,120,120,120,120,120, 120,120,120,120,120,120,120,120,120,120,120, 120,120,120,120,120,120,120,120,120,120)
+runs <- c(150,150,150,150,150,150,150,150,150,150,150,120,120,120,120,120,120,120,120,120,120,120,190,190,190,190,190,190,190,190,190,190,190)
+wicks <- c(0,1,2,3,4,5,6,7,8,9,10, 0,1,2,3,4,5,6,7,8,9,10,0,1,2,3,4,5,6,7,8,9,10)
+game <- c(1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3)
+
+
+q1 <- tibble(game, balls, runs, wicks)
+
+
+preds <- predict(lgmod3, new_data = q1, type = "prob")
+
+q1_f <- q1 %>% bind_cols(preds)
+
+
+ggplot(q1_f, aes(x = as.factor(wicks), y= .pred_Yes, col = as.factor(game))) + geom_point()
+
+```
+
+```{r}
+
+balls <- c(114,114,114,114,114,114,114,114,114,114,114,114,114,114,114,114,114,114,114,114)
+game <- c(1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2)
+wicks <- c()
+
+
+
+
+
+```
+
+
+
+```{r}
+library(viridis)
+
+ggplot(x, aes(x = balls, y = runs, col = .pred_Yes)) + geom_point(alpha = 0.5) + scale_color_viridis()
+
+
+
+```
+
+
+```{r}
+
+
+
+
+tune_spec <- rand_forest(mtry = 3, trees = 1000, min_n = tune()) %>%
+                    set_mode("classification") %>%
+                        set_engine("ranger")
+
+```
+
+
+
+```{r}
+
+init_recep <- recipe(win ~ ., win_train) 
+
+
+```
+
+
+```{r}
+
+tune_wf <- workflow() %>%
+                    add_recipe(init_recep) %>%
+                      add_model(tune_spec)
+
+
+```
+
+
+
+```{r}
+
+wincv <- vfold_cv(win_train, v = 2, repeats = 1)
+
+
+tune1 <- tune_grid(tune_wf, resamples = wincv, grid = 20)
+
+
+
+```
+
+
+```{r}
+
+
+results <-  tune1 %>%
+            collect_metrics() %>%
+              filter(.metric == "roc_auc")
+
+
+ggplot(results, aes(x = min_n, y = mean)) + geom_point()
+
+
+
+
+```
+
+
+```{r}
+
+
+
+rf_grid1 <- grid_regular(min_n(range = c(30, 1000)),  levels = 5)
+
 
 
 
@@ -245,11 +917,111 @@ balldata <- balls(2) %>% bind_rows(balls(3)) %>%
 ```{r}
 
 
-win_split <- initial_split(balldata, prop = .7, strata = "win")
-win_train <- training(win_split)
-win_test  <- testing(win_split)
+trainvfold <- vfold_cv(win_train, v =2, repeats = 1)
 
 
+```
+
+
+```{r}
+
+
+doParallel::registerDoParallel()
+
+tunes <- tune_grid(tune_wf,resamples = trainvfold,  grid = rf_grid1)
+
+
+```
+
+```{r}
+
+
+
+results <-  tunes %>%
+            collect_metrics() %>%
+              filter(.metric == "roc_auc")
+
+
+ggplot(results, aes(x = min_n, y = mean)) + geom_point()
+
+
+
+
+```
+```{r}
+
+
+rf_fin <- rand_forest( mtry = 3, trees = 100, min_n = 500) %>%
+                  set_mode("classification") %>%
+                        set_engine("ranger")
+
+
+rffin <- fit(rf_fin, win ~., data = win_train) 
+
+
+
+
+````
+
+
+
+```{r}
+
+
+winpred <- predict(rffin, new_data = win_test, type = "prob")
+
+
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+````{r}
+
+
+ipldat3 <- ipldat2 %>% filter(inn == 1) %>%
+                   mutate(wincat = if_else(winner == batting, 1, 0)) %>%
+                          mutate(totrun = bat+ext) %>%
+                          mutate(wickloss = if_else(!is.na(wickty), 1,0)) %>%
+                            group_by(file, inn) %>%
+                              mutate(runs = cumsum(totrun), wicks = cumsum(wickloss), balls = ball2*1) %>%
+                                ungroup() 
+
+ipldat6 <- ipldat2 %>% filter(inn == 2) %>%
+                   mutate(wincat = if_else(winner == batting, 1, 0)) %>%
+                          mutate(totrun = bat+ext) %>%
+                          mutate(wickloss = if_else(!is.na(wickty), 1,0)) %>%
+                            group_by(file, inn) %>%
+                              mutate(runs = cumsum(totrun), wicks = cumsum(wickloss), balls = ball2*1) %>%
+                                ungroup() 
+
+
+
+
+x <- predict(lgmod3, new_data = ipldat3, type = "prob")
+y <- predict(rffin, new_data = ipldat3, type = "prob")
+z <- predict(lgmod2, new_data = ipldat6, type = "prob")
+
+
+ipldat4 <- ipldat3 %>% bind_cols(x) %>%
+                              bind_cols(y) %>%
+  
+                                filter(file == "1082591.csv") %>%
+                                  select(ball2, .pred_Yes, .pred_Yes1) %>%
+                                    gather("pred", "value", -ball2) %>%
+                                        mutate(mod = if_else(pred == ".pred_Yes", "LogReg", "RF"))
 
 ```
 
@@ -257,36 +1029,22 @@ win_test  <- testing(win_split)
 
 ```{r}
 
-set.seed(1234)
 
-
-logregmod1 <- logistic_reg(mode = "classification")
-
-
-log_reg1 <- 
-  logregmod1 %>% set_engine("glm") %>%
-  fit(win ~ .,
-    data = win_train)
+ggplot(ipldat4, aes(x = ball2, y = value, col =mod)) + geom_line()
 
 
 
 ```
+
 
 
 
 ```{r}
- 
-x <- predict(log_reg1, new_data = win_test, type = "prob") %>%
-  mutate(wins = win_test$win, balls = win_test$balls, runs = win_test$runs, wicks = win_test$wicks) 
 
-```
-
-
-```{r}
-library(viridis)
-
-ggplot(x, aes(x = balls, y = runs, col = .pred_Yes)) + geom_point() + scale_color_viridis()
+ipldat5 <- ipldat4 %>% mutate(lagyes = lag(Yes)) %>%
+                      mutate(probdelt = if_else(is.na(lagyes), Yes - 0.5, Yes - lagyes)) %>%    
+                      group_by(batsman) %>%
+                      summarise(wpa = sum(probdelt)*100)
 
 
-
-```
+`````
